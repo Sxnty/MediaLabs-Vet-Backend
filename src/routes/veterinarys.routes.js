@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { addVeterinary } from '../controllers/veterinarys.controllers.js';
+import { addVeterinary, getVeterinaries } from '../controllers/veterinarys.controllers.js';
 const router = Router();
 
-router.post('/veterinarys', addVeterinary);
-
+router.post('/veterinaries', addVeterinary);
+router.get('/veterinaries', getVeterinaries)
 export default router;

@@ -64,3 +64,15 @@ export const addVeterinary = async (req, res) => {
     });
   }
 };
+export const getVeterinaries = async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM veterinary');
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error:
+        'An error occurred while getting the veterinarys in the database. Please contact a developer',
+    });
+  }
+};
