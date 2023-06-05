@@ -15,7 +15,6 @@ export const addVeterinary = async (req, res) => {
       });
     }
     if (typeof ownerCi !== 'number') {
-      console.log('entramos');
       return res
         .status(400)
         .json({ error: 'Owner CI must be a valid integer number' });
@@ -73,6 +72,33 @@ export const getVeterinaries = async (req, res) => {
     res.status(500).json({
       error:
         'An error occurred while getting the veterinarys in the database. Please contact a developer',
+    });
+  }
+};
+export const getVeterinaryById = async (req, res) => {
+  try {
+    let { id } = req.params;
+    id = Number(id);
+    if (!id) {
+      return res.status(400).json({ error: 'Veterinary ID is required' });
+    }
+    if (typeof id !== 'number') {
+      return res
+        .status(400)
+        .json({ error: 'Veterinary ID need to be an integer number' });
+    }
+    const [rows] = await pool.query(
+      'SELECT * FROM veterinary WHERE veterinary_owner_ci = ?',
+      [id]
+    );
+    if (rows.length <= 0) {
+      res.status(404).json({ error: 'Veterinary not found.' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({
+      error:
+        'An error occurred while getting the veterinary in the database. Please contact a developer',
     });
   }
 };
