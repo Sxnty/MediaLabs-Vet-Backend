@@ -4,9 +4,9 @@ export const addVeterinary = async (req, res) => {
   try {
     const emailRegex = /^\S+@\S+\.\S+$/;
 
-    const { ownerCi, name, password, email, ownerName } = req.body;
+    const { ownerCi, name, password, email, ownerName, phoneNumber, status } = req.body;
     console.log(req.body);
-    if (!ownerCi || !name || !password || !email || !ownerName) {
+    if (!ownerCi || !name || !password || !email || !ownerName || !phoneNumber || !status) {
       return res.status(400).json({ error: 'All fields are required' });
     }
     if (!emailRegex.test(email)) {
@@ -14,7 +14,7 @@ export const addVeterinary = async (req, res) => {
         error: 'Invalid email format',
       });
     }
-    if (typeof ownerCi !== 'number') {
+    if (typeof ownerCi !== 'number' || typeof phoneNumber !=='number') {
       return res
         .status(400)
         .json({ error: 'Owner CI must be a valid integer number' });
@@ -29,7 +29,7 @@ export const addVeterinary = async (req, res) => {
         error: 'Name, password, email, and owner name must be strings',
       });
     }
-    if (password.length > 16 || email.length > 50 || ownerName.length > 25) {
+    if (password.length > 16 || email.length > 50 || ownerName.length > 25 || phoneNumber.length > 15) {
       return res.status(400).json({
         error: 'Incorrect length of parameters',
       });
@@ -46,9 +46,10 @@ export const addVeterinary = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'INSERT INTO veterinary (veterinary_owner_ci, veterinary_name, veterinary_password, veterinary_email, veterinary_owner_name) VALUES (?, ?, ?, ?, ?)',
-      [ownerCi, name, password, email, ownerName]
+      'INSERT INTO veterinary (veterinary_owner_ci, veterinary_name, veterinary_password, veterinary_email, veterinary_owner_name, veterinary_phone, veterinary_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [ownerCi, name, password, email, ownerName, phoneNumber, status]
     );
+    
     res.send({
       ownerCi,
       name,
@@ -100,5 +101,34 @@ export const getVeterinaryById = async (req, res) => {
       error:
         'An error occurred while getting the veterinary in the database. Please contact a developer',
     });
+  }
+};
+
+export const deleteVeterinaryById = async (req, res) => {
+  try {
+    let { id } = req.params;
+    id = Number(id);
+    if (!id) {
+      return res.status(400).json({ error: 'Veterinary ID is required' });
+    }
+    if (typeof id !== 'number') {
+      return res
+        .status(400)
+        .json({ error: 'Veterinary ID need to be an integer number' });
+    }
+
+    const [result] = await pool.query(
+      'DELETE FROM veterinary WHERE veterinary_owner_ci = ?',
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      // Si no se afectó ninguna fila, significa que no se encontró la veterinaria con el ID proporcionado
+      return res.status(404).json({ error: 'Veterinary not found' });
+    }
+
+    res.json({ message: 'Veterinary deleted successfully' });
+  } catch (error) {
+    console.log(error);
   }
 };
