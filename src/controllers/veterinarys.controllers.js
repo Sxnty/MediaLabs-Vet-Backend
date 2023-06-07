@@ -104,6 +104,35 @@ export const getVeterinaryById = async (req, res) => {
   }
 };
 
+export const getVeterinaryByphone = async (req, res) => {
+  try {
+    let { phone } = req.params;
+    phone = Number(phone);
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+    if (typeof phone !== 'number') {
+      return res
+        .status(400)
+        .json({ error: 'Phone number need to be an integer number' });
+    }
+    const [rows] = await pool.query(
+      'SELECT * FROM veterinary WHERE veterinary_phone = ?',
+      [phone]
+    );
+    if (rows.length <= 0) {
+      res.status(404).json({ error: 'Veterinary not found.' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({
+      error:
+        'An error occurred while getting the veterinary in the database. Please contact a developer',
+    });
+  }
+};
+
+
 export const deleteVeterinaryById = async (req, res) => {
   try {
     let { id } = req.params;
