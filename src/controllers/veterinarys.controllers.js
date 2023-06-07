@@ -132,6 +132,37 @@ export const getVeterinaryByphone = async (req, res) => {
   }
 };
 
+export const getVeterinaryByEmail = async (req, res) => {
+  try {
+    let { email } = req.params;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    if (typeof email !== 'string') {
+      return res
+        .status(400)
+        .json({ error: 'Email need to be an string' });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+    const [rows] = await pool.query(
+      'SELECT * FROM veterinary WHERE veterinary_email = ?',
+      [email]
+    );
+    if (rows.length <= 0) {
+      res.status(404).json({ error: 'Veterinary not found.' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({
+      error:
+        'An error occurred while getting the veterinary in the database. Please contact a developer',
+    });
+  }
+};
+
 
 export const deleteVeterinaryById = async (req, res) => {
   try {
