@@ -4,9 +4,18 @@ export const addVeterinary = async (req, res) => {
   try {
     const emailRegex = /^\S+@\S+\.\S+$/;
 
-    const { ownerCi, name, password, email, ownerName, phoneNumber, status } = req.body;
+    const { ownerCi, name, password, email, ownerName, phoneNumber, status } =
+      req.body;
     console.log(req.body);
-    if (!ownerCi || !name || !password || !email || !ownerName || !phoneNumber || !status) {
+    if (
+      !ownerCi ||
+      !name ||
+      !password ||
+      !email ||
+      !ownerName ||
+      !phoneNumber ||
+      !status
+    ) {
       return res.status(400).json({ error: 'All fields are required' });
     }
     if (!emailRegex.test(email)) {
@@ -14,7 +23,7 @@ export const addVeterinary = async (req, res) => {
         error: 'Invalid email format',
       });
     }
-    if (typeof ownerCi !== 'number' || typeof phoneNumber !=='number') {
+    if (typeof ownerCi !== 'number' || typeof phoneNumber !== 'number') {
       return res
         .status(400)
         .json({ error: 'Owner CI must be a valid integer number' });
@@ -29,7 +38,12 @@ export const addVeterinary = async (req, res) => {
         error: 'Name, password, email, and owner name must be strings',
       });
     }
-    if (password.length > 16 || email.length > 50 || ownerName.length > 25 || phoneNumber.length > 15) {
+    if (
+      password.length > 16 ||
+      email.length > 50 ||
+      ownerName.length > 25 ||
+      phoneNumber.length > 15
+    ) {
       return res.status(400).json({
         error: 'Incorrect length of parameters',
       });
@@ -49,7 +63,7 @@ export const addVeterinary = async (req, res) => {
       'INSERT INTO veterinary (veterinary_owner_ci, veterinary_name, veterinary_password, veterinary_email, veterinary_owner_name, veterinary_phone, veterinary_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [ownerCi, name, password, email, ownerName, phoneNumber, status]
     );
-    
+
     res.send({
       ownerCi,
       name,
@@ -139,9 +153,7 @@ export const getVeterinaryByEmail = async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
     if (typeof email !== 'string') {
-      return res
-        .status(400)
-        .json({ error: 'Email need to be an string' });
+      return res.status(400).json({ error: 'Email need to be an string' });
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -162,7 +174,6 @@ export const getVeterinaryByEmail = async (req, res) => {
     });
   }
 };
-
 
 export const deleteVeterinaryById = async (req, res) => {
   try {
@@ -188,6 +199,71 @@ export const deleteVeterinaryById = async (req, res) => {
     }
 
     res.json({ message: 'Veterinary deleted successfully' });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const updateVeterinaryName = async (req, res) => {
+  try {
+    let { id } = req.params;
+    let { newName } = req.body;
+    id = Number(id);
+    if (!id) {
+      return res.status(400).json({ error: 'Veterinary ID is required' });
+    }
+
+    if (!newName) {
+      return res.status(400).json({ error: 'Veterinary new name is required' });
+    }
+    if (typeof newName !== 'string') {
+      return res.status(400).json({ error: 'New name needs to be an string' });
+    }
+    const [result] = await pool.query(
+      'UPDATE veterinary SET veterinary_name = ? WHERE veterinary_owner_ci = ?',
+      [newName, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Veterinary not found' });
+    }
+
+    return res.json({ message: 'Veterinary name successfully updated.' });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const updateVeterinaryEmail = async (req, res) => {
+  try {
+    let { id } = req.params;
+    let { newEmail } = req.body;
+    id = Number(id);
+    if (!id) {
+      return res.status(400).json({ error: 'Veterinary ID is required' });
+    }
+
+    if (!newEmail) {
+      return res
+        .status(400)
+        .json({ error: 'Veterinary new email is required' });
+    }
+    if (typeof newEmail !== 'string') {
+      return res.status(400).json({ error: 'New email needs to be an string' });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    const [result] = await pool.query(
+      'UPDATE veterinary SET veterinary_email = ? WHERE veterinary_owner_ci = ?',
+      [newEmail, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Veterinary not found' });
+    }
+
+    return res.json({ message: 'Veterinary email successfully updated.' });
   } catch (error) {
     console.log(error);
   }
