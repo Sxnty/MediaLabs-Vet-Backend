@@ -1,4 +1,7 @@
 import { pool } from '../db.js';
+import bcrypt from 'bcrypt';
+
+
 
 export const addVeterinary = async (req, res) => {
   try {
@@ -6,7 +9,6 @@ export const addVeterinary = async (req, res) => {
 
     const { ownerCi, name, password, email, ownerName, phoneNumber, status } =
       req.body;
-    console.log(req.body);
     if (
       !ownerCi ||
       !name ||
@@ -58,10 +60,10 @@ export const addVeterinary = async (req, res) => {
         error: 'Veterinary with the same owner CI already exists',
       });
     }
-
+    const hashedPassword = await bcrypt.hash(password, 10);
     const [rows] = await pool.query(
       'INSERT INTO veterinary (veterinary_owner_ci, veterinary_name, veterinary_password, veterinary_email, veterinary_owner_name, veterinary_phone, veterinary_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [ownerCi, name, password, email, ownerName, phoneNumber, status]
+      [ownerCi, name, hashedPassword, email, ownerName, phoneNumber, status]
     );
 
     res.send({
