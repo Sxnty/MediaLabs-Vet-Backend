@@ -1,9 +1,7 @@
 import { pool } from '../db.js';
 import bcrypt from 'bcrypt';
 
-
-
-export const addVeterinary = async (req, res) => {
+/* export const addVeterinary = async (req, res) => {
   try {
     const emailRegex = /^\S+@\S+\.\S+$/;
 
@@ -79,16 +77,87 @@ export const addVeterinary = async (req, res) => {
         'An error occurred while adding the veterinary to the database. Please contact a developer',
     });
   }
+}; */
+
+import Veterinary from '../models/veterinary.model.js';
+
+export const addVeterinary = async (req, res) => {
+  try {
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    const { ownerCi, name, password, email, ownerName, phoneNumber, status } = req.body;
+    if (
+      !ownerCi ||
+      !name ||
+      !password ||
+      !email ||
+      !ownerName ||
+      !phoneNumber ||
+      !status
+    ) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: 'Invalid email format',
+      });
+    }
+    if (typeof ownerCi !== 'number' || typeof phoneNumber !== 'number') {
+      return res
+        .status(400)
+        .json({ error: 'Owner CI must be a valid integer number' });
+    }
+    if (
+      typeof name !== 'string' ||
+      typeof password !== 'string' ||
+      typeof email !== 'string' ||
+      typeof ownerName !== 'string'
+    ) {
+      return res.status(400).json({
+        error: 'Name, password, email, and owner name must be strings',
+      });
+    }
+    if (
+      password.length > 16 ||
+      email.length > 50 ||
+      ownerName.length > 25 ||
+      phoneNumber.length > 15
+    ) {
+      return res.status(400).json({
+        error: 'Incorrect length of parameters',
+      });
+    }
+    const existingOwnerCi = await Veterinary.existsByOwnerCi(ownerCi);
+    if (existingOwnerCi) {
+      return res.status(400).json({ error: 'Veterinary with the same owner CI already exists' });
+    }
+
+
+
+    const insertId = await Veterinary.create(ownerCi, name, password, email, ownerName, phoneNumber, status);
+
+    res.send({
+      ownerCi,
+      name,
+      email,
+      ownerName,
+      insertId
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'An error occurred while adding the veterinary to the database. Please contact a developer' });
+  }
 };
+
+
+
 export const getVeterinaries = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM veterinary');
-    res.json(rows);
+    const veterinaries = await Veterinary.getAll();
+    res.json(veterinaries);
   } catch (error) {
     console.error(error);
     res.status(500).json({
       error:
-        'An error occurred while getting the veterinarys in the database. Please contact a developer',
+        'An error occurred while getting the veterinaries in the database. Please contact a developer',
     });
   }
 };
@@ -102,16 +171,13 @@ export const getVeterinaryById = async (req, res) => {
     if (typeof id !== 'number') {
       return res
         .status(400)
-        .json({ error: 'Veterinary ID need to be an integer number' });
+        .json({ error: 'Veterinary ID needs to be an integer number' });
     }
-    const [rows] = await pool.query(
-      'SELECT * FROM veterinary WHERE veterinary_owner_ci = ?',
-      [id]
-    );
-    if (rows.length <= 0) {
-      res.status(404).json({ error: 'Veterinary not found.' });
+    const veterinary = await Veterinary.getById(id);
+    if (!veterinary) {
+      return res.status(404).json({ error: 'Veterinary not found' });
     }
-    res.json(rows[0]);
+    res.json(veterinary);
   } catch (error) {
     res.status(500).json({
       error:
@@ -120,7 +186,7 @@ export const getVeterinaryById = async (req, res) => {
   }
 };
 
-export const getVeterinaryByphone = async (req, res) => {
+export const getVeterinaryByPhone = async (req, res) => {
   try {
     let { phone } = req.params;
     phone = Number(phone);
@@ -130,20 +196,17 @@ export const getVeterinaryByphone = async (req, res) => {
     if (typeof phone !== 'number') {
       return res
         .status(400)
-        .json({ error: 'Phone number need to be an integer number' });
+        .json({ error: 'Phone number needs to be an integer number' });
     }
-    const [rows] = await pool.query(
-      'SELECT * FROM veterinary WHERE veterinary_phone = ?',
-      [phone]
-    );
-    if (rows.length <= 0) {
-      res.status(404).json({ error: 'Veterinary not found.' });
+    const veterinary = await Veterinary.getByPhone(phone);
+    if (!veterinary) {
+      return res.status(404).json({ error: 'Veterinary not found' });
     }
-    res.json(rows[0]);
+    res.json(veterinary);
   } catch (error) {
     res.status(500).json({
       error:
-        'An error occurred while getting the veterinary in the database. Please contact a developer',
+        'An error occurred while getting the veterinary from the database. Please contact a developer',
     });
   }
 };
@@ -155,24 +218,21 @@ export const getVeterinaryByEmail = async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
     if (typeof email !== 'string') {
-      return res.status(400).json({ error: 'Email need to be an string' });
+      return res.status(400).json({ error: 'Email needs to be a string' });
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
-    const [rows] = await pool.query(
-      'SELECT * FROM veterinary WHERE veterinary_email = ?',
-      [email]
-    );
-    if (rows.length <= 0) {
-      res.status(404).json({ error: 'Veterinary not found.' });
+    const veterinary = await Veterinary.getByEmail(email);
+    if (!veterinary) {
+      return res.status(404).json({ error: 'Veterinary not found' });
     }
-    res.json(rows[0]);
+    res.json(veterinary);
   } catch (error) {
     res.status(500).json({
       error:
-        'An error occurred while getting the veterinary in the database. Please contact a developer',
+        'An error occurred while getting the veterinary from the database. Please contact a developer',
     });
   }
 };
@@ -181,57 +241,48 @@ export const deleteVeterinaryById = async (req, res) => {
   try {
     let { id } = req.params;
     id = Number(id);
-    if (!id) {
-      return res.status(400).json({ error: 'Veterinary ID is required' });
-    }
-    if (typeof id !== 'number') {
-      return res
-        .status(400)
-        .json({ error: 'Veterinary ID need to be an integer number' });
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'Veterinary ID is required and must be a number' });
     }
 
-    const [result] = await pool.query(
-      'DELETE FROM veterinary WHERE veterinary_owner_ci = ?',
-      [id]
-    );
+    const result = await Veterinary.deleteById(id);
 
-    if (result.affectedRows === 0) {
-      // Si no se afectó ninguna fila, significa que no se encontró la veterinaria con el ID proporcionado
+    if (!result) {
       return res.status(404).json({ error: 'Veterinary not found' });
     }
 
     res.json({ message: 'Veterinary deleted successfully' });
   } catch (error) {
-    console.log(error);
+    res.status(500).json({ error: 'An error occurred while deleting the veterinary' });
   }
 };
+
 
 export const updateVeterinaryName = async (req, res) => {
   try {
     let { id } = req.params;
     let { newName } = req.body;
     id = Number(id);
-    if (!id) {
-      return res.status(400).json({ error: 'Veterinary ID is required' });
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'Veterinary ID is required and must be a number' });
     }
 
-    if (!newName) {
-      return res.status(400).json({ error: 'Veterinary new name is required' });
+    if (!newName || typeof newName !== 'string') {
+      return res.status(400).json({ error: 'Invalid or missing new name' });
     }
-    if (typeof newName !== 'string') {
-      return res.status(400).json({ error: 'New name needs to be an string' });
-    }
-    const [result] = await pool.query(
-      'UPDATE veterinary SET veterinary_name = ? WHERE veterinary_owner_ci = ?',
-      [newName, id]
-    );
-    if (result.affectedRows === 0) {
+
+    const result = await Veterinary.updateName(id, newName);
+
+    if (result === 0) {
       return res.status(404).json({ error: 'Veterinary not found' });
     }
 
-    return res.json({ message: 'Veterinary name successfully updated.' });
+    return res.json({ message: 'Veterinary name successfully updated' });
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while updating the veterinary name' });
   }
 };
 
@@ -240,33 +291,59 @@ export const updateVeterinaryEmail = async (req, res) => {
     let { id } = req.params;
     let { newEmail } = req.body;
     id = Number(id);
-    if (!id) {
-      return res.status(400).json({ error: 'Veterinary ID is required' });
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'Veterinary ID is required and must be a number' });
     }
 
-    if (!newEmail) {
-      return res
-        .status(400)
-        .json({ error: 'Veterinary new email is required' });
+    if (!newEmail || typeof newEmail !== 'string') {
+      return res.status(400).json({ error: 'Invalid or missing new email' });
     }
-    if (typeof newEmail !== 'string') {
-      return res.status(400).json({ error: 'New email needs to be an string' });
-    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    const [result] = await pool.query(
-      'UPDATE veterinary SET veterinary_email = ? WHERE veterinary_owner_ci = ?',
-      [newEmail, id]
-    );
-    if (result.affectedRows === 0) {
+    const result = await Veterinary.updateEmail(id, newEmail);
+
+    if (result === 0) {
       return res.status(404).json({ error: 'Veterinary not found' });
     }
 
-    return res.json({ message: 'Veterinary email successfully updated.' });
+    return res.json({ message: 'Veterinary email successfully updated' });
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while updating the veterinary email' });
+  }
+};
+export const updateVeterinaryStatus = async (req, res) => {
+  try {
+    let { id } = req.params;
+    let { status } = req.body;
+    id = Number(id);
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'Veterinary ID is required and must be a number' });
+    }
+
+    if (typeof status === 'undefined' || status === null) {
+      return res.status(400).json({ error: 'Invalid or missing new status' });
+    }
+
+    if (typeof status !== 'boolean') {
+      return res.status(400).json({ error: 'Veterinary status needs to be a boolean' });
+    }
+
+    const result = await Veterinary.updateStatus(id, status);
+
+    if (result === 0) {
+      return res.status(404).json({ error: 'Veterinary not found' });
+    }
+
+    return res.json({ message: 'Veterinary status successfully updated' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while updating the veterinary status' });
   }
 };
