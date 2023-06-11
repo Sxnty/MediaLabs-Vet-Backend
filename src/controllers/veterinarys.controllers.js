@@ -1,90 +1,13 @@
 import { pool } from '../db.js';
 import bcrypt from 'bcrypt';
-
-/* export const addVeterinary = async (req, res) => {
-  try {
-    const emailRegex = /^\S+@\S+\.\S+$/;
-
-    const { ownerCi, name, password, email, ownerName, phoneNumber, status } =
-      req.body;
-    if (
-      !ownerCi ||
-      !name ||
-      !password ||
-      !email ||
-      !ownerName ||
-      !phoneNumber ||
-      !status
-    ) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        error: 'Invalid email format',
-      });
-    }
-    if (typeof ownerCi !== 'number' || typeof phoneNumber !== 'number') {
-      return res
-        .status(400)
-        .json({ error: 'Owner CI must be a valid integer number' });
-    }
-    if (
-      typeof name !== 'string' ||
-      typeof password !== 'string' ||
-      typeof email !== 'string' ||
-      typeof ownerName !== 'string'
-    ) {
-      return res.status(400).json({
-        error: 'Name, password, email, and owner name must be strings',
-      });
-    }
-    if (
-      password.length > 16 ||
-      email.length > 50 ||
-      ownerName.length > 25 ||
-      phoneNumber.length > 15
-    ) {
-      return res.status(400).json({
-        error: 'Incorrect length of parameters',
-      });
-    }
-
-    const [existingOwnerCi] = await pool.query(
-      'SELECT veterinary_owner_ci FROM veterinary WHERE veterinary_owner_ci = ?',
-      [ownerCi]
-    );
-    if (existingOwnerCi.length > 0) {
-      return res.status(400).json({
-        error: 'Veterinary with the same owner CI already exists',
-      });
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const [rows] = await pool.query(
-      'INSERT INTO veterinary (veterinary_owner_ci, veterinary_name, veterinary_password, veterinary_email, veterinary_owner_name, veterinary_phone, veterinary_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [ownerCi, name, hashedPassword, email, ownerName, phoneNumber, status]
-    );
-
-    res.send({
-      ownerCi,
-      name,
-      email,
-      ownerName,
-      inserId: rows.insertId,
-    });
-  } catch (error) {
-    res.status(500).json({
-      error:
-        'An error occurred while adding the veterinary to the database. Please contact a developer',
-    });
-  }
-}; */
-
 import Veterinary from '../models/veterinary.model.js';
 
 export const addVeterinary = async (req, res) => {
   try {
     const emailRegex = /^\S+@\S+\.\S+$/;
-    const { ownerCi, name, password, email, ownerName, phoneNumber, status } = req.body;
+    const { ownerCi, name, password, email, ownerName, phoneNumber, status } =
+      req.body;
+    console.log(phoneNumber);
     if (
       !ownerCi ||
       !name ||
@@ -92,10 +15,18 @@ export const addVeterinary = async (req, res) => {
       !email ||
       !ownerName ||
       !phoneNumber ||
-      !status
+      typeof status === 'undefined' ||
+      typeof status === 'null'
     ) {
+      console.log('entre');
       return res.status(400).json({ error: 'All fields are required' });
     }
+
+    let ciLenght = ownerCi.toString();
+    if (ciLenght.length !== 8) {
+      return res.status(400).json({ error: 'Incorrect CI lenght' });
+    }
+
     if (!emailRegex.test(email)) {
       return res.status(400).json({
         error: 'Invalid email format',
@@ -104,7 +35,9 @@ export const addVeterinary = async (req, res) => {
     if (typeof ownerCi !== 'number' || typeof phoneNumber !== 'number') {
       return res
         .status(400)
-        .json({ error: 'Owner CI must be a valid integer number' });
+        .json({
+          error: 'Owner CI & phone number must be a valid integer number',
+        });
     }
     if (
       typeof name !== 'string' ||
@@ -116,11 +49,20 @@ export const addVeterinary = async (req, res) => {
         error: 'Name, password, email, and owner name must be strings',
       });
     }
+    if (typeof status !== 'boolean') {
+      return res.status(400).json({ error: 'Status needs to be a boolean' });
+    }
     if (
+      name.length > 50 ||
+      name.length < 8 ||
       password.length > 16 ||
+      password.length < 3 ||
       email.length > 50 ||
+      email.length < 5 ||
       ownerName.length > 25 ||
-      phoneNumber.length > 15
+      ownerName.length < 8 ||
+      phoneNumber.length > 15 ||
+      phoneNumber.length < 6
     ) {
       return res.status(400).json({
         error: 'Incorrect length of parameters',
@@ -128,26 +70,37 @@ export const addVeterinary = async (req, res) => {
     }
     const existingOwnerCi = await Veterinary.existsByOwnerCi(ownerCi);
     if (existingOwnerCi) {
-      return res.status(400).json({ error: 'Veterinary with the same owner CI already exists' });
+      return res
+        .status(400)
+        .json({ error: 'Veterinary with the same owner CI already exists' });
     }
 
-
-
-    const insertId = await Veterinary.create(ownerCi, name, password, email, ownerName, phoneNumber, status);
+    const insertId = await Veterinary.create(
+      ownerCi,
+      name,
+      password,
+      email,
+      ownerName,
+      phoneNumber,
+      status
+    );
 
     res.send({
       ownerCi,
       name,
       email,
       ownerName,
-      insertId
+      insertId,
     });
   } catch (error) {
-    res.status(500).json({ error: 'An error occurred while adding the veterinary to the database. Please contact a developer' });
+    res
+      .status(500)
+      .json({
+        error:
+          'An error occurred while adding the veterinary to the database. Please contact a developer',
+      });
   }
 };
-
-
 
 export const getVeterinaries = async (req, res) => {
   try {
@@ -243,7 +196,9 @@ export const deleteVeterinaryById = async (req, res) => {
     id = Number(id);
 
     if (!id || isNaN(id)) {
-      return res.status(400).json({ error: 'Veterinary ID is required and must be a number' });
+      return res
+        .status(400)
+        .json({ error: 'Veterinary ID is required and must be a number' });
     }
 
     const result = await Veterinary.deleteById(id);
@@ -254,10 +209,11 @@ export const deleteVeterinaryById = async (req, res) => {
 
     res.json({ message: 'Veterinary deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'An error occurred while deleting the veterinary' });
+    res
+      .status(500)
+      .json({ error: 'An error occurred while deleting the veterinary' });
   }
 };
-
 
 export const updateVeterinaryName = async (req, res) => {
   try {
@@ -266,11 +222,18 @@ export const updateVeterinaryName = async (req, res) => {
     id = Number(id);
 
     if (!id || isNaN(id)) {
-      return res.status(400).json({ error: 'Veterinary ID is required and must be a number' });
+      return res
+        .status(400)
+        .json({ error: 'Veterinary ID is required and must be a number' });
     }
 
     if (!newName || typeof newName !== 'string') {
       return res.status(400).json({ error: 'Invalid or missing new name' });
+    }
+    if (newName.length > 50 || newName.length < 5) {
+      return res.status(400).json({
+        error: 'Incorrect length of parameters',
+      });
     }
 
     const result = await Veterinary.updateName(id, newName);
@@ -282,7 +245,9 @@ export const updateVeterinaryName = async (req, res) => {
     return res.json({ message: 'Veterinary name successfully updated' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'An error occurred while updating the veterinary name' });
+    res
+      .status(500)
+      .json({ error: 'An error occurred while updating the veterinary name' });
   }
 };
 
@@ -293,7 +258,9 @@ export const updateVeterinaryEmail = async (req, res) => {
     id = Number(id);
 
     if (!id || isNaN(id)) {
-      return res.status(400).json({ error: 'Veterinary ID is required and must be a number' });
+      return res
+        .status(400)
+        .json({ error: 'Veterinary ID is required and must be a number' });
     }
 
     if (!newEmail || typeof newEmail !== 'string') {
@@ -314,7 +281,9 @@ export const updateVeterinaryEmail = async (req, res) => {
     return res.json({ message: 'Veterinary email successfully updated' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'An error occurred while updating the veterinary email' });
+    res
+      .status(500)
+      .json({ error: 'An error occurred while updating the veterinary email' });
   }
 };
 export const updateVeterinaryStatus = async (req, res) => {
@@ -324,7 +293,9 @@ export const updateVeterinaryStatus = async (req, res) => {
     id = Number(id);
 
     if (!id || isNaN(id)) {
-      return res.status(400).json({ error: 'Veterinary ID is required and must be a number' });
+      return res
+        .status(400)
+        .json({ error: 'Veterinary ID is required and must be a number' });
     }
 
     if (typeof status === 'undefined' || status === null) {
@@ -332,7 +303,9 @@ export const updateVeterinaryStatus = async (req, res) => {
     }
 
     if (typeof status !== 'boolean') {
-      return res.status(400).json({ error: 'Veterinary status needs to be a boolean' });
+      return res
+        .status(400)
+        .json({ error: 'Veterinary status needs to be a boolean' });
     }
 
     const result = await Veterinary.updateStatus(id, status);
@@ -344,6 +317,10 @@ export const updateVeterinaryStatus = async (req, res) => {
     return res.json({ message: 'Veterinary status successfully updated' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'An error occurred while updating the veterinary status' });
+    res
+      .status(500)
+      .json({
+        error: 'An error occurred while updating the veterinary status',
+      });
   }
 };
